@@ -22,8 +22,9 @@ public class Deck : MonoBehaviour
 	public GameObject prefabSprite;
 	public GameObject prefabCard;
 
-	[Header("----------------")]
+	[Header("Set Dynamically")]
 	public PT_XMLReader xmlr;
+
 	public List<string> cardNames;
 	public List<Card> cards;
 	public List<Decorator> decorators;
