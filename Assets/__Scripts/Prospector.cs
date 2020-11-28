@@ -430,7 +430,7 @@ public class Prospector : MonoBehaviour
 	//ScoreManager handles all the scoring
 	void ScoreManager(ScoreEvent sEvt)
 	{
-		List<Vector3> fsPts;
+		List<Vector2> fsPts;
 		switch (sEvt)
 		{
 			//Same things need to happen whether it's a draw, a win, or a loss
@@ -445,7 +445,7 @@ public class Prospector : MonoBehaviour
 				if (fsRun != null)
 				{
 					//Create points for the Bezier curve
-					fsPts = new List<Vector3>();
+					fsPts = new List<Vector2>();
 					fsPts.Add(fsPosRun);
 					fsPts.Add(fsPosMid2);
 					fsPts.Add(fsPosEnd);
@@ -468,7 +468,7 @@ public class Prospector : MonoBehaviour
 				Vector3 p0 = Input.mousePosition;
 				//p0.x /= Screen.width;
 				//p0.y /= Screen.height;
-				fsPts = new List<Vector3>();
+				fsPts = new List<Vector2>();
 				fsPts.Add(p0);
 				fsPts.Add(fsPosMid);
 				fsPts.Add(fsPosRun);

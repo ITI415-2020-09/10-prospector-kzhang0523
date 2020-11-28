@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public enum FSState
+public enum FSState 
 {
-    idle,
-    pre,
-    active,
-    post
+	idle,
+	pre,
+	active,
+	post
 }
 public class FloatingScore : MonoBehaviour
 {
