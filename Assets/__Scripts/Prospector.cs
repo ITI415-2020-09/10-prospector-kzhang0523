@@ -1,63 +1,131 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
+//An enum to handle all the possible scoring events
+public enum ScoreEvent
+{
+	draw,
+	mine,
+	mineGold,
+	gameWin,
+	gameLoss
+}
 
 public class Prospector : MonoBehaviour
 {
+	#region Fields
+	[Header("Game flow management")]
+	static public Prospector S;
+	static public int SCORE_FROM_PREVIOUS_ROUND = 0;
+	static public int HIGH_SCORE = 0;
 
-<<<<<<< HEAD
+	public float reloadDelay = 5.0f; //The delay between rounds
+
+	[Header("Bezier curve management")]
+	public Transform fsPosMidObject;
+	public Transform fsPosRunObject;
+	public Transform fsPosMid2Object;
+	public Transform fsPosEndObject;
+
 	public Vector2 fsPosMid;
 	public Vector2 fsPosRun;
 	public Vector2 fsPosMid2;
 	public Vector2 fsPosEnd;
-=======
-	static public Prospector S;
->>>>>>> parent of 7060ce2... ScoreManager Code
 
-	[Header("Set in Inspector")]
+	[Header("Card management")]
+	public Deck deck;
 	public TextAsset deckXML;
+	public Layout layout;
 	public TextAsset layoutXML;
+	public Vector3 layoutCenter;
 	public float xOffset = 3;
 	public float yOffset = -2.5f;
-	public Vector3 layoutCenter;
-
-
-	[Header("Set Dynamically")]
-	public Deck deck;
-	public Layout layout;
-	public List<CardProspector> drawPile;
 	public Transform layoutAnchor;
+
 	public CardProspector target;
 	public List<CardProspector> tableau;
 	public List<CardProspector> discardPile;
+	public List<CardProspector> drawPile;
 
+	[Header("Score management")]
+	//Fields to track score info
+	public int chain = 0; //of cards in this run
+	public int scoreRun = 0;
+	public int score = 0;
+	public FloatingScore fsRun;
+	public Text GTGameOver;
+	public Text GTRoundResult;
+	#endregion
+
+	#region Methods
 	void Awake()
 	{
-		S = this;
+		S = this; //Prospector singleton
+
+		//Check for a high score in PlayerPrefs
+		if (PlayerPrefs.HasKey("ProspectorHighScore"))
+		{
+			HIGH_SCORE = PlayerPrefs.GetInt("ProspectorHighScore");
+		}
+
+		//Add the score from the last round, which will be >0 if it was a win
+		score += SCORE_FROM_PREVIOUS_ROUND;
+
+		//And reset the SCORE_FROM_PREVIOUS_ROUND
+		SCORE_FROM_PREVIOUS_ROUND = 0;
+
+		//Set up the Texts that show at the end of the round. Set the Text Components
+		GameObject go = GameObject.Find("GameOver");
+		if (go != null)
+		{
+			GTGameOver = go.GetComponent<Text>();
+		}
+
+		go = GameObject.Find("RoundResult");
+		if (go != null)
+		{
+			GTRoundResult = go.GetComponent<Text>();
+		}
+
+		//Make them invisible
+		ShowResultsGTs(false);
+
+		go = GameObject.Find("HighScore");
+		string hScore = "High score: " + Utils.AddCommasToNumber(HIGH_SCORE);
+		go.GetComponent<Text>().text = hScore;
 	}
 
+	void ShowResultsGTs(bool show)
+	{
+		GTGameOver.gameObject.SetActive(show);
+		GTRoundResult.gameObject.SetActive(show);
+	}
+
+	// Use this for initialization
 	void Start()
 	{
-		deck = GetComponent<Deck>();
-		deck.InitDeck(deckXML.text);
-		Deck.Shuffle(ref deck.cards);
+		Scoreboard.S.score = score;
+		deck = GetComponent<Deck>(); //Get the Deck
+		deck.InitDeck(deckXML.text); //Pass DeckXML to it
+		Deck.Shuffle(ref deck.cards); //This shuffles the deck. The ref keyword passes a reference to deck.cards, which allows
+									  //deck.cards to be modified by Deck.Shuffle()
 
-		Card c;
-		for (int cNum = 0; cNum < deck.cards.Count; cNum++)
-		{
-			c = deck.cards[cNum];
-			c.transform.localPosition = new Vector3((cNum % 13) * 3, cNum / 13 * 4, 0);
-		}
 		layout = GetComponent<Layout>(); //Get the layout
 		layout.ReadLayout(layoutXML.text); //Pass LayoutXML to it
 
 		drawPile = ConvertListCardsToListCardProspectors(deck.cards);
 		LayoutGame();
 
+		//Get Bezier curve positions
+		fsPosMid = fsPosMidObject.position;
+		fsPosRun = fsPosRunObject.position;
+		fsPosMid2 = fsPosMid2Object.position;
+		fsPosEnd = fsPosEndObject.position;
 	}
+
 	List<CardProspector> ConvertListCardsToListCardProspectors(List<Card> lCD)
 	{
 		List<CardProspector> lCP = new List<CardProspector>();
@@ -69,12 +137,32 @@ public class Prospector : MonoBehaviour
 		}
 		return (lCP);
 	}
+
+	//The Draw function will pull a single card from the drawPile and return it
 	CardProspector Draw()
 	{
 		CardProspector cd = drawPile[0]; //Pull the 0th CardProspector
 		drawPile.RemoveAt(0); //Then remove it from List<> drawPile
 		return (cd); //And return it
 	}
+
+	//Convert from the layoutID int to the CardProspector with that ID
+	CardProspector FindCardByLayoutID(int layoutID)
+	{
+		foreach (CardProspector tCP in tableau)
+		{
+			//Search through all cards in the tableau List<>
+			if (tCP.layoutID == layoutID)
+			{
+				//If the card has the same ID, return it
+				return tCP;
+			}
+		}
+		//If it'snot found, return null
+		return null;
+	}
+
+	//LayoutGame() positions the initial tableau of cards, AKA the "mine"
 	void LayoutGame()
 	{
 		//Create an empty GameObject to serve as an anchor for the tableau
@@ -106,15 +194,25 @@ public class Prospector : MonoBehaviour
 			//CardProspectors in the tableau have the state CardState.tableau
 			cp.SetSortingLayerName(tSD.layerName); //Set the sorting layers
 			tableau.Add(cp); //Add this CardProspector to the List<> tableau
-
 		}
+
+		//Set which cards are hiding others
+		foreach (CardProspector tCP in tableau)
+		{
+			foreach (int hid in tCP.slotDef.hiddenBy)
+			{
+				cp = FindCardByLayoutID(hid);
+				tCP.hiddenBy.Add(cp);
+			}
+		}
+
+		//Set up the initial target card
 		MoveToTarget(Draw());
 
 		//Set up the Draw pile
 		UpdateDrawPile();
 	}
 
-<<<<<<< HEAD
 	//CardClicked is called any time a card in the game is clicked
 	public void CardClicked(CardProspector cd)
 	{
@@ -162,8 +260,6 @@ public class Prospector : MonoBehaviour
 	}
 
 	//Moves the current target to the discardPile
-=======
->>>>>>> parent of 7060ce2... ScoreManager Code
 	void MoveToDiscard(CardProspector cd)
 	{
 		//Set the state of the card to discard
@@ -227,7 +323,6 @@ public class Prospector : MonoBehaviour
 			cd.SetSortOrder(-10 * i);
 		}
 	}
-<<<<<<< HEAD
 
 	//Return true if the two cards are adjacent in rank (A & K wrap around)
 	public bool AdjacentRank(CardProspector c0, CardProspector c1)
@@ -388,26 +483,42 @@ public class Prospector : MonoBehaviour
 				{
 					fs.reportFinishTo = fsRun.gameObject;
 				}
-=======
-	public void CardClicked(CardProspector cd)
-	{
-		//The reaction is determined by the state of the clicked card
-		switch (cd.state)
+				break;
+		}
+
+		//This second switch statement handles round wins and losses
+		switch (sEvt)
 		{
-			case CardState.target:
-				//Clicking the target card does nothing
->>>>>>> parent of 7060ce2... ScoreManager Code
+			case ScoreEvent.gameWin:
+				GTGameOver.text = "Round Over";
+				//If it's a win, add the score to the next round. static fields are NOT reset by reloading the level
+				Prospector.SCORE_FROM_PREVIOUS_ROUND = score;
+				//print("You won this round! Round score: " + score);
+				GTRoundResult.text = "You won this round! Play another to add to your score!\nRound Score: " + score;
+				ShowResultsGTs(true);
 				break;
-			case CardState.drawpile:
-				//Clicking any card in the drawPile will draw the next card
-				MoveToDiscard(target); //Moves the target to the discardPile
-				MoveToTarget(Draw()); //Moves the next drawn card to the target
-				UpdateDrawPile(); //Restacks the DrawPile
-
+			case ScoreEvent.gameLoss:
+				GTGameOver.text = "Game Over";
+				//If it's a loss, check against the high score
+				if (Prospector.HIGH_SCORE <= score)
+				{
+					//print("You got the high score! High score: " + score);
+					string sRR = "You got the high score!\nHigh score: " + score;
+					GTRoundResult.text = sRR;
+					Prospector.HIGH_SCORE = score;
+					PlayerPrefs.SetInt("ProspectorHighScore", score);
+				}
+				else
+				{
+					//print("Your final score for the game was:" + score);
+					GTRoundResult.text = "Your final score was: " + score;
+				}
+				ShowResultsGTs(true);
 				break;
-			case CardState.tableau:
+			default:
+				//print("score: " + score + " scoreRun: " + scoreRun + " chain: " + chain);
 				break;
-
 		}
 	}
+	#endregion
 }
