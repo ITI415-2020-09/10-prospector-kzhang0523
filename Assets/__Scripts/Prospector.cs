@@ -30,10 +30,10 @@ public class Prospector : MonoBehaviour
 	public Transform fsPosMid2Object;
 	public Transform fsPosEndObject;
 
-	public Vector2 fsPosMid = new Vector2(0.5f, 0.90f);
-	public Vector2 fsPosRun = new Vector2 (0.5f, 0.75f);
-	public Vector2 fsPosMid2 = new Vector2 (0.4f, 1.0f);
-	public Vector2 fsPosEnd = new Vector2( 0.5f, 0.9f);
+	public Vector2 fsPosMid;
+	public Vector2 fsPosRun;
+	public Vector2 fsPosMid2;
+	public Vector2 fsPosEnd;
 
 	[Header("Card management")]
 	public Deck deck;
@@ -228,7 +228,6 @@ public class Prospector : MonoBehaviour
 				MoveToTarget(Draw()); //Moves the next drawn card to the target
 				UpdateDrawPile(); //Restacks the DrawPile
 				ScoreManager(ScoreEvent.draw);
-				FloatingScoreHandler(eScoreEvent.draw);
 				break;
 			case eCardState.tableau:
 				//Clicking a card in the tableau will check if it's a valid play
@@ -253,7 +252,6 @@ public class Prospector : MonoBehaviour
 				MoveToTarget(cd); //Make it the target card
 				SetTableauFaces(); //Update tableau card face-ups
 				ScoreManager(ScoreEvent.mine);
-				FloatingScoreHandler(eScoreEvent.mine);
 				break;
 		}
 
@@ -356,51 +354,6 @@ public class Prospector : MonoBehaviour
 		return false;
 	}
 
-	void FloatingScoreHandler(eScoreEvent evt)
-    {
-		List<Vector2> fsPts;
-		switch (evt)
-		{
-			case eScoreEvent.draw:
-			case eScoreEvent.gameWin:
-			case eScoreEvent.gameLoss:
-
-				if (fsRun != null)
-				{
-					fsPts = new List<Vector2>();
-					fsPts.Add(fsPosRun);
-					fsPts.Add(fsPosMid2);
-					fsPts.Add(fsPosEnd);
-					fsRun.reportFinishTo = Scoreboard.S.gameObject;
-					fsRun.Init(fsPts, 0, 1);
-					fsRun.fontSizes = new List<float>(new float[] { 23, 36, 4 });
-					fsRun = null;
-				}
-				break;
-			case eScoreEvent.mine:
-				FloatingScore fs;
-				Vector2 p0 = Input.mousePosition;
-				p0.x /= Screen.width;
-				p0.y /= Screen.height;
-				fsPts = new List<Vector2>();
-				fsPts.Add(p0);
-				fsPts.Add(fsPosMid);
-				fsPts.Add(fsPosRun);
-				fs = Scoreboard.S.CreateFloatingScore(ScoreManager.chain, fsPts);
-				fs.fontSizes = new List<float>(new float[] { 4, 50, 28 });
-				if (fsRun == null)
-                {
-					fsRun = fs;
-					fsRun.reportFinishTo = null;
-                }
-                else
-                {
-					fs.reportFinishTo = fsRun.gameObject;
-                }
-				break;
-		}
-    }
-
 	//This turns cards in the Mine face-up or face-down
 	void SetTableauFaces()
 	{
@@ -457,12 +410,10 @@ public class Prospector : MonoBehaviour
 		if (won)
 		{
 			ScoreManager(ScoreEvent.gameWin);
-			FloatingScoreHandler(eScoreEvent.gameWin);
 		}
 		else
 		{
 			ScoreManager(ScoreEvent.gameLoss);
-			FloatingScoreHandler(eScoreEvent.gameLoss);
 		}
 
 		//Reload the scene in reloadDelay seconds
