@@ -386,17 +386,17 @@ public class Prospector : MonoBehaviour
 				fsPts.Add(p0);
 				fsPts.Add(fsPosMid);
 				fsPts.Add(fsPosRun);
-				//fs = Scoreboard.S.CreateFloatingScore(ScoreManager.chain, fsPts);
-				//fs.fontSizes = new List<float>(new float[] { 4, 50, 28 });
-				//if (fsRun == null)
-				// {
-				//	fsRun = fs;
-				//	fsRun.reportFinishTo = null;
-				// }
-				// else
-				// {
-				//	fs.reportFinishTo = fsRun.gameObject;
-				// }
+				fs = Scoreboard.S.CreateFloatingScore(S.chain, fsPts);
+				fs.fontSizes = new List<float>(new float[] { 4, 50, 28 });
+				if (fsRun == null)
+				 {
+					fsRun = fs;
+					fsRun.reportFinishTo = null;
+				 }
+				else
+				 {
+					fs.reportFinishTo = fsRun.gameObject;
+				 }
 				break;
 		}
 	}
